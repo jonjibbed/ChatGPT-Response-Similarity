@@ -3,101 +3,150 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<title>Jaccard Similarity — Citations Dashboard</title>
+	<title>ChatGPT Response Similarity Explorer</title>
 	<!-- D3 + PapaParse from CDN -->
 	<script src="https://d3js.org/d3.v7.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 	<style>
-		:root{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
-		body{margin:16px}
-		.hero-stat{
-			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-			color: white;
-			padding: 24px;
-			border-radius: 12px;
-			text-align: center;
-			margin-bottom: 20px;
-			box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-		}
-		.hero-stat .value{
-			font-size: 48px;
-			font-weight: bold;
-			margin: 8px 0;
-		}
-		.hero-stat .label{
-			font-size: 14px;
-			opacity: 0.9;
-			text-transform: uppercase;
-			letter-spacing: 1px;
-		}
-		.hero-stat .context{
-			font-size: 12px;
-			opacity: 0.8;
-			margin-top: 8px;
-		}
-		.container{display:flex;gap:16px}
-		.controls{width:320px}
-		#chart{flex:1;min-height:520px;border:1px solid #eee;padding:8px}
-		.table-wrap{max-height:300px;overflow:auto;margin-top:8px}
-		button{cursor:pointer;padding:8px 12px;background:#667eea;color:white;border:none;border-radius:4px;margin:4px 0;}
-		button:hover{background:#5568d3}
-		input,select{width:100%;margin:6px 0;padding:6px}
-		.legend{display:flex;gap:8px;align-items:center;margin-top:8px}
+	:root{font-family:'Courier New',Consolas,Monaco,monospace}
+	body{max-width:1400px;margin:0 auto;padding:24px}
+	.hero-stat{
+		background: #f5f5f5;
+		border: 2px solid #ff6666;
+		color: #333;
+		padding: 20px 24px;
+		border-radius: 12px;
+		text-align: center;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+	}
+	.hero-stat .value{
+		font-size: 48px;
+		font-weight: bold;
+		margin: 8px 0;
+		color: #ff6666;
+	}
+	.hero-stat .label{
+		font-size: 14px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 1px;
+		color: #666;
+	}
+	.hero-stat .context{
+		font-size: 12px;
+		margin-top: 8px;
+		white-space: pre-line;
+		color: #666;
+	}
+	.filter-row{
+		display:flex;
+		gap:20px;
+		align-items:flex-start;
+		margin-bottom:24px;
+	}
+	.filter-group{
+		flex:0 0 200px;
+	}
+	.filter-group label{
+		display:block;
+		font-size:12px;
+		font-weight:700;
+		color:#333;
+		margin-bottom:6px;
+	}
+	.scale-sticky{
+		position:fixed;
+		top:24px;
+		right:24px;
+		z-index:100;
+		width:250px;
+	}
+	#chart{min-height:520px;border:1px solid #eee;padding:8px;margin-bottom:40px;display:flex;justify-content:center;}
+	button{cursor:pointer;padding:8px 12px;background:#667eea;color:white;border:none;border-radius:4px;margin:4px 0;}
+	button:hover{background:#5568d3}
+	select{width:100%;padding:8px;border:1px solid #ddd;border-radius:4px}
 		.cell{stroke:#fff}
-		#file{display:none;}
-		.file-label{display:block;padding:8px;background:#f5f5f5;border:1px dashed #ccc;border-radius:4px;cursor:pointer;text-align:center;}
-		.file-label:hover{background:#eee}
+	.hidden{display:none}
+	.color-legend{
+		padding:12px 16px;
+		background:#fff;
+		border:2px solid #ff6666;
+		border-radius:8px;
+		box-shadow:0 2px 8px rgba(0,0,0,0.1);
+	}
+	.color-legend-title{
+		font-size:11px;
+		font-weight:700;
+		margin-bottom:8px;
+		color:#333;
+		text-transform:uppercase;
+		letter-spacing:0.5px;
+	}
+	.color-scale{
+		height:20px;
+		background:linear-gradient(to right, #ffffff, #ff6666);
+		border-radius:4px;
+		border:1px solid #ddd;
+	}
+	.color-labels{
+		display:flex;
+		justify-content:space-between;
+		font-size:11px;
+		color:#666;
+		margin-top:4px;
+	}
 	</style>
 </head>
 <body>
-	<h2>ChatGPT Response Similarity Analysis</h2>
-	<p>Analyzing citation overlap across responses using Jaccard similarity coefficient</p>
+	<h2>ChatGPT Response Similarity Explorer</h2>
 
-	<div class="container">
-		<div class="controls">
-			<div class="hero-stat" id="heroStat">
-				<div class="label">Average Similarity</div>
-				<div class="value">—</div>
-				<div class="context">Loading data...</div>
-			</div>
-			
-			<label>Prompt filter</label>
-			<select id="promptFilter"><option value="__ALL__">All prompts (aggregate)</option></select>
-			<label>Day filter</label>
-			<select id="dayFilter"><option value="__ALL__">All days</option></select>
-			<label>Aggregate across prompts</label>
-			<select id="aggMode">
-				<option value="mean">Mean across prompts</option>
-				<option value="median">Median across prompts</option>
-			</select>
-			<button id="exportMatrix">Export similarity CSV</button>
-			
-			<details style="margin-top:12px">
-				<summary style="cursor:pointer;padding:8px 0;font-weight:500">Upload different CSV</summary>
-				<label class="file-label" for="file">Choose CSV file</label>
-				<input id="file" type="file" accept=".csv" />
-			</details>
-			
-			<div class="legend">
-				<span style="font-size:12px">Colour intensity = Jaccard similarity (0–100%)</span>
-			</div>
-			<div class="table-wrap">
-				<pre id="stats" style="font-family:monospace;font-size:11px"></pre>
+	<div class="scale-sticky">
+		<div class="color-legend">
+			<div class="color-legend-title">Similarity Scale</div>
+			<div class="color-scale"></div>
+			<div class="color-labels">
+				<span>0%</span>
+				<span>100%</span>
 			</div>
 		</div>
+	</div>
 
+	<div class="hero-stat" id="heroStat" style="max-width:400px;margin:0 auto 32px auto">
+		<div class="label">Average Similarity</div>
+		<div class="value">—</div>
+		<div class="context">Loading data...</div>
+	</div>
+
+	<div class="filter-row">
+		<div class="filter-group">
+			<label>Prompt Filter</label>
+			<select id="promptFilter"><option value="__ALL__">All prompts (mean average)</option></select>
+		</div>
+		
+		<div class="filter-group">
+			<label>Day Filter</label>
+			<select id="dayFilter"><option value="__ALL__">All days</option></select>
+		</div>
+	</div>
+
+	<button id="exportMatrix" class="hidden">Export similarity CSV</button>
+
+	<h3 style="margin-top:40px;margin-bottom:16px;font-size:18px">Person-to-Person Similarity</h3>
+	<p style="color:#666;font-size:13px;margin-bottom:16px">Comparing citation overlap between individual participants</p>
 		<div id="chart"></div>
+
+	<div style="margin-top:60px">
+		<h3 style="margin-bottom:16px;font-size:18px">Day & Prompt Similarity Matrix</h3>
+		<p style="color:#666;font-size:13px;margin-bottom:16px">Average similarity between all participants for each day/prompt combination</p>
+		<div id="dayPromptChart" style="border:1px solid #eee;padding:16px;overflow-x:auto;display:flex;justify-content:center"></div>
 	</div>
 
 	<script>
 		// Use tabs for indentation throughout
-		const fileInput = document.getElementById('file')
 		const promptFilter = document.getElementById('promptFilter')
 		const dayFilter = document.getElementById('dayFilter')
-		const aggMode = document.getElementById('aggMode')
 		const exportBtn = document.getElementById('exportMatrix')
-		const statsPre = document.getElementById('stats')
-		const heroStat = document.getElementById('heroStat')
+	const heroStat = document.getElementById('heroStat')
 
 	let rawRows = []
 	let users = []
@@ -123,73 +172,54 @@
 	}
 
 		function parseCSVData(res) {
-			console.log('CSV parsed. Rows:', res.data.length)
-			if(res.data.length > 0) {
-				console.log('First row columns:', Object.keys(res.data[0]))
-				console.log('First row sample:', res.data[0])
-			}
-			
-			// Check if headers are numeric (means CSV had no header row detected)
-			const firstRow = res.data[0]
-			const keys = Object.keys(firstRow)
-			const hasNumericKeys = keys.every(k => !isNaN(k))
-			
-			let dataToProcess = res.data
-			if(hasNumericKeys && firstRow['0'] === 'name') {
-				// First row is actually headers, skip it
-				console.log('Detected headers as data, skipping first row')
-				dataToProcess = res.data.slice(1)
-			}
-			
-			const normalised = dataToProcess.map(row => {
-				const r = {};
-				// Handle both numeric keys (0,1,2) and named keys
-				if(hasNumericKeys) {
-					// Map numeric indices to names
-					r['name'] = row['0'] || ''
-					r['day'] = row['1'] || ''
-					r['prompt'] = row['2'] || ''
-					r['date'] = row['3'] || ''
-					r['citation type'] = row['4'] || ''
-					r['url clean'] = row['5'] || ''
-				} else {
-					// Normal named keys
-					for (const key in row) r[key.toLowerCase()] = row[key];
-				}
-				return {
-					Name: (r['name']||'').trim(),
-					Day: (r['day']||'').trim(),
-					Prompt: (r['prompt']||'').trim(),
-					Date: (r['date']||'').trim(),
-					CitationType: (r['citation type']||'').trim(),
-					URL: (r['url clean']||'').trim()
-				};
-			});
-			rawRows = normalised;
-			console.log('Normalised rows:', rawRows.length)
-			console.log('Sample normalised:', rawRows[0])
-			storeData();
-			initialise();
+					console.log('CSV parsed. Rows:', res.data.length)
+					if(res.data.length > 0) {
+						console.log('First row columns:', Object.keys(res.data[0]))
+						console.log('First row sample:', res.data[0])
+					}
+					
+					// Check if headers are numeric (means CSV had no header row detected)
+					const firstRow = res.data[0]
+					const keys = Object.keys(firstRow)
+					const hasNumericKeys = keys.every(k => !isNaN(k))
+					
+					let dataToProcess = res.data
+					if(hasNumericKeys && firstRow['0'] === 'name') {
+						// First row is actually headers, skip it
+						console.log('Detected headers as data, skipping first row')
+						dataToProcess = res.data.slice(1)
+					}
+					
+					const normalised = dataToProcess.map(row => {
+						const r = {};
+						// Handle both numeric keys (0,1,2) and named keys
+						if(hasNumericKeys) {
+							// Map numeric indices to names
+							r['name'] = row['0'] || ''
+							r['day'] = row['1'] || ''
+							r['prompt'] = row['2'] || ''
+							r['date'] = row['3'] || ''
+							r['citation type'] = row['4'] || ''
+							r['url clean'] = row['5'] || ''
+						} else {
+							// Normal named keys
+							for (const key in row) r[key.toLowerCase()] = row[key];
+						}
+						return {
+							Name: (r['name']||'').trim(),
+							Day: (r['day']||'').trim(),
+							Prompt: (r['prompt']||'').trim(),
+							Date: (r['date']||'').trim(),
+							CitationType: (r['citation type']||'').trim(),
+							URL: (r['url clean']||'').trim()
+						};
+					});
+					rawRows = normalised;
+					console.log('Normalised rows:', rawRows.length)
+					console.log('Sample normalised:', rawRows[0])
+					storeData();
+					initialise();
 		}
-
-		fileInput.addEventListener('change', (e)=>{
-			console.log('File input changed')
-			const f = e.target.files[0]
-			if(!f) {
-				console.log('No file selected')
-				return
-			}
-			console.log('File selected:', f.name, f.size, 'bytes')
-			Papa.parse(f,{
-				header:true,
-				skipEmptyLines:true,
-				complete: parseCSVData,
-				error: function(err){
-					console.error('CSV parse error:', err)
-					alert('Error parsing CSV: ' + err.message)
-				}
-			})
-		})
 
 		// Auto-load data.csv on page load
 		function loadDefaultData() {
@@ -231,7 +261,6 @@
 
 		promptFilter.addEventListener('change', render)
 		dayFilter.addEventListener('change', render)
-		aggMode.addEventListener('change', render)
 
 		exportBtn.addEventListener('click', ()=>{
 			const matrix = computeSimilarityGrid()
@@ -300,19 +329,14 @@
 				return {users:userList,grid:emptyGrid}
 			}
 
-			// Aggregate across prompts (mean or median)
+		// Aggregate across prompts using mean
 			const M = userList.length
 			const finalGrid = Array.from({length:M}, ()=>Array(M).fill(0))
 			for(let i=0;i<M;i++){
 				for(let j=0;j<M;j++){
 					const vals = perPromptScores.map(g=>g[i][j])
-					if(aggMode.value==='median'){
-						const s = vals.slice().sort((a,b)=>a-b)
-						finalGrid[i][j] = s[Math.floor(s.length/2)]
-					}else{
-						const s = vals.reduce((a,b)=>a+b,0)
-						finalGrid[i][j] = s/vals.length
-					}
+				const sum = vals.reduce((a,b)=>a+b,0)
+				finalGrid[i][j] = sum/vals.length
 				}
 			}
 
@@ -325,21 +349,33 @@
 			console.log('Similarity matrix computed:', mat ? `${mat.users.length} users` : 'null')
 			if(!mat) return
 			d3.select('#chart').selectAll('*').remove()
-			const width = Math.max(520, Math.min(900, window.innerWidth-380))
-			const cellSize = Math.min(48, Math.floor(width / (mat.users.length+1)))
-			const svg = d3.select('#chart').append('svg').attr('width', width+160).attr('height', cellSize*(mat.users.length+1)+120)
+		
+		const cellSize = 48
+		const labelWidth = 100
+		const labelHeight = 100
+		const svgWidth = labelWidth + mat.users.length * cellSize + 20
+		const svgHeight = labelHeight + mat.users.length * cellSize + 20
+		
+		const svg = d3.select('#chart').append('svg')
+			.attr('width', svgWidth)
+			.attr('height', svgHeight)
 
-			const color = d3.scaleLinear().domain([0,1]).range(['#ffffff','#1f77b4'])
+		const color = d3.scaleLinear().domain([0,1]).range(['#ffffff','#ff6666'])
 
 		// rows
-		const g = svg.append('g').attr('transform','translate(140,100)')
+	const g = svg.append('g').attr('transform',`translate(${labelWidth},${labelHeight})`)
 		// labels
 		g.selectAll('.rowLabel').data(mat.users).enter().append('text')
 			.attr('x',-6).attr('y',(d,i)=>i*cellSize+cellSize/1.5)
-			.attr('text-anchor','end').text(d=>anonymizeName(d))
+		.attr('text-anchor','end')
+		.attr('font-size', 11)
+		.attr('font-weight', 'bold')
+		.text(d=>anonymizeName(d))
 		g.selectAll('.colLabel').data(mat.users).enter().append('text')
 			.attr('x',(d,i)=>i*cellSize+cellSize/2).attr('y',-6)
 			.attr('text-anchor','start')
+		.attr('font-size', 11)
+		.attr('font-weight', 'bold')
 			.attr('transform',(d,i)=>`rotate(-45 ${i*cellSize+cellSize/2} -6)`)
 			.text(d=>anonymizeName(d))
 
@@ -352,34 +388,23 @@
 				if(d.rowIdx === d.colIdx) return '#f5f5f5'
 				return color(d.val)
 			})
-			.on('mouseenter',function(event,d){
-				// show tooltip
-				const tt = d3.select('#chart').append('div').attr('id','tt')
-					.style('position','absolute')
-					.style('left', (event.pageX+8)+'px')
-					.style('top', (event.pageY+8)+'px')
-					.style('background','#fff')
-					.style('padding','6px')
-					.style('border','1px solid #ddd')
-					.text(d.val.toFixed(4))
-			})
-			.on('mouseleave',()=>d3.select('#tt').remove())
 		
-	// Add text labels with percentage
-	rows.selectAll('text').data((d,rowIdx)=>d.map((val,colIdx)=>({val,rowIdx,colIdx}))).enter().append('text')
-		.attr('x',d=>d.colIdx*cellSize+cellSize/2)
-		.attr('y',cellSize/2)
-		.attr('dy','0.35em')
-		.attr('text-anchor','middle')
-		.attr('font-size', Math.min(10, cellSize/4))
-		.attr('fill', d=>{
-			// Different text color for diagonal
-			if(d.rowIdx === d.colIdx) return '#999'
-			return d.val > 0.5 ? '#fff' : '#000'
-		})
+		// Add text labels with percentage
+		rows.selectAll('text').data((d,rowIdx)=>d.map((val,colIdx)=>({val,rowIdx,colIdx}))).enter().append('text')
+			.attr('x',d=>d.colIdx*cellSize+cellSize/2)
+			.attr('y',cellSize/2)
+			.attr('dy','0.35em')
+			.attr('text-anchor','middle')
+		.attr('font-size', Math.min(14, cellSize/3))
+		.attr('font-weight', 'bold')
+			.attr('fill', d=>{
+				// Different text color for diagonal
+				if(d.rowIdx === d.colIdx) return '#999'
+		return '#000'
+	})
 		.text(d=>{
 			// Show dash for diagonal (self-comparison)
-			if(d.rowIdx === d.colIdx) return '-'
+			if(d.rowIdx === d.colIdx) return '—'
 			return Math.round(d.val*100)+'%'
 		})
 
@@ -392,17 +417,134 @@
 		}
 		const avg = offDiagonal.length > 0 ? offDiagonal.reduce((a,b)=>a+b,0)/offDiagonal.length : 0
 		
-		// Update hero stat
-		heroStat.querySelector('.value').textContent = Math.round(avg*100) + '%'
-		const filterDesc = []
-		if(promptFilter.value !== '__ALL__') filterDesc.push(`Prompt: ${promptFilter.value}`)
-		if(dayFilter.value !== '__ALL__') filterDesc.push(`Day: ${dayFilter.value}`)
-		const contextText = filterDesc.length > 0 
-			? filterDesc.join(' | ') + ` (${aggMode.value})`
-			: `All data (${aggMode.value} aggregation)`
-		heroStat.querySelector('.context').textContent = contextText
+	// Update hero stat
+	heroStat.querySelector('.value').textContent = Math.round(avg*100) + '%'
+	const promptText = promptFilter.value === '__ALL__' ? 'All Prompts' : promptFilter.value
+	const dayText = dayFilter.value === '__ALL__' ? 'All Days' : dayFilter.value
+	const contextText = `${promptText}\n${dayText}`
+	heroStat.querySelector('.context').textContent = contextText
+	
+	// Render day/prompt heatmap
+	renderDayPromptHeatmap()
+	}
+
+	function renderDayPromptHeatmap() {
+		if(!rawRows.length) return
 		
-		statsPre.textContent = `Users: ${mat.users.length}\nComparisons: ${offDiagonal.length}\nJaccard range: ${Math.min(...offDiagonal).toFixed(3)} - ${Math.max(...offDiagonal).toFixed(3)}`
+		// Build structure: day -> prompt -> users -> urls
+		const structure = new Map()
+		for(const r of rawRows) {
+			const day = r.Day || '__MISSING__'
+			const prompt = r.Prompt || '__MISSING__'
+			const user = r.Name
+			
+			if(!structure.has(day)) structure.set(day, new Map())
+			if(!structure.get(day).has(prompt)) structure.get(day).set(prompt, new Map())
+			if(!structure.get(day).get(prompt).has(user)) structure.get(day).get(prompt).set(user, new Set())
+			if(r.URL) structure.get(day).get(prompt).get(user).add(r.URL)
+		}
+		
+		// Calculate average similarity for each day/prompt combination
+		const dayList = days.slice().sort()
+		const promptList = prompts.slice().sort()
+		
+		function jaccard(a,b){
+			if(a.size===0 && b.size===0) return 0
+			let inter=0
+			for(const x of a) if(b.has(x)) inter++
+			const uni = new Set([...a,...b]).size
+			return uni===0?0:inter/uni
+		}
+		
+		// Build grid: prompts (rows) x days (cols)
+		const grid = []
+		for(const prompt of promptList) {
+			const row = []
+			for(const day of dayList) {
+				const userMap = structure.get(day)?.get(prompt)
+				if(!userMap || userMap.size < 2) {
+					row.push(null) // Not enough data
+					continue
+				}
+				
+				// Calculate average similarity between all pairs of users
+				const userList = Array.from(userMap.keys())
+				let sumSim = 0
+				let count = 0
+				for(let i=0; i<userList.length; i++) {
+					for(let j=i+1; j<userList.length; j++) {
+						const sim = jaccard(userMap.get(userList[i]), userMap.get(userList[j]))
+						sumSim += sim
+						count++
+					}
+				}
+				row.push(count > 0 ? sumSim / count : 0)
+			}
+			grid.push(row)
+		}
+		
+		// Render with D3
+		d3.select('#dayPromptChart').selectAll('*').remove()
+		
+		const cellSize = 60
+		const labelWidth = 300
+		const labelHeight = 40
+		const width = labelWidth + dayList.length * cellSize + 20
+		const height = labelHeight + promptList.length * cellSize + 20
+		
+		const svg = d3.select('#dayPromptChart').append('svg')
+			.attr('width', width)
+			.attr('height', height)
+		
+		const color = d3.scaleLinear().domain([0,1]).range(['#ffffff','#ff6666'])
+		
+		const g = svg.append('g').attr('transform', `translate(${labelWidth},${labelHeight})`)
+		
+		// Column labels (days)
+		g.selectAll('.colLabel').data(dayList).enter().append('text')
+			.attr('x',(d,i)=>i*cellSize+cellSize/2).attr('y',-6)
+			.attr('text-anchor','middle')
+			.attr('font-size', 12)
+			.text(d=>d)
+		
+		// Row labels (prompts)
+		g.selectAll('.rowLabel').data(promptList).enter().append('text')
+			.attr('x',-6).attr('y',(d,i)=>i*cellSize+cellSize/1.5)
+			.attr('text-anchor','end')
+			.attr('font-size', 11)
+			.text(d=>d.length > 50 ? d.substring(0,47)+'...' : d)
+		
+		// Cells
+		const rows = g.selectAll('.row').data(grid).enter().append('g')
+			.attr('transform',(d,i)=>`translate(0,${i*cellSize})`)
+		
+	rows.selectAll('rect').data((d,rowIdx)=>d.map((val,colIdx)=>({val,rowIdx,colIdx})))
+		.enter().append('rect')
+		.attr('x',d=>d.colIdx*cellSize).attr('y',0)
+		.attr('width',cellSize-2).attr('height',cellSize-2)
+		.attr('class','cell')
+		.style('fill',d=>{
+			if(d.val === null) return '#f5f5f5'
+			return color(d.val)
+		})
+		
+	// Text labels
+	rows.selectAll('text').data((d,rowIdx)=>d.map((val,colIdx)=>({val,rowIdx,colIdx})))
+		.enter().append('text')
+		.attr('x',d=>d.colIdx*cellSize+cellSize/2)
+		.attr('y',cellSize/2)
+		.attr('dy','0.35em')
+		.attr('text-anchor','middle')
+		.attr('font-size', 14)
+		.attr('font-weight', 'bold')
+	.attr('fill', d=>{
+		if(d.val === null) return '#999'
+		return '#000'
+	})
+		.text(d=>{
+			if(d.val === null) return '—'
+			return Math.round(d.val*100)+'%'
+		})
 	}
 
 	// Auto-load data on page load
