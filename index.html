@@ -127,6 +127,15 @@
 			<label>Day Filter</label>
 			<select id="dayFilter"><option value="__ALL__">All days</option></select>
 		</div>
+		
+		<div class="filter-group">
+			<label>Citation Type</label>
+			<select id="citationTypeFilter">
+				<option value="__ALL__">All types</option>
+				<option value="Citation" selected>Citation</option>
+				<option value="Supporting">Supporting</option>
+			</select>
+		</div>
 	</div>
 
 	<button id="exportMatrix" class="hidden">Export similarity CSV</button>
@@ -143,9 +152,10 @@
 
 	<script>
 		// Use tabs for indentation throughout
-		const promptFilter = document.getElementById('promptFilter')
-		const dayFilter = document.getElementById('dayFilter')
-		const exportBtn = document.getElementById('exportMatrix')
+	const promptFilter = document.getElementById('promptFilter')
+	const dayFilter = document.getElementById('dayFilter')
+	const citationTypeFilter = document.getElementById('citationTypeFilter')
+	const exportBtn = document.getElementById('exportMatrix')
 	const heroStat = document.getElementById('heroStat')
 
 	let rawRows = []
@@ -259,8 +269,9 @@
 
 		function escapeHtml(s){return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
 
-		promptFilter.addEventListener('change', render)
-		dayFilter.addEventListener('change', render)
+	promptFilter.addEventListener('change', render)
+	dayFilter.addEventListener('change', render)
+	citationTypeFilter.addEventListener('change', render)
 
 		exportBtn.addEventListener('click', ()=>{
 			const matrix = computeSimilarityGrid()
@@ -281,21 +292,23 @@
 		return [header,...rows].join('\n')
 	}
 
-		function computeSimilarityGrid(){
-			if(!rawRows.length){alert('No data');return null}
-			const promptVal = promptFilter.value
-			const dayVal = dayFilter.value
-			// Build map: prompt -> user -> set(urls)
-			const promptUserMap = new Map()
-			for(const r of rawRows){
-				if(dayVal!=='__ALL__' && r.Day!==dayVal) continue
-				const p = r.Prompt||'__MISSING__'
-				if(promptVal!=='__ALL__' && p!==promptVal) continue
-				if(!promptUserMap.has(p)) promptUserMap.set(p, new Map())
-				const userMap = promptUserMap.get(p)
-				if(!userMap.has(r.Name)) userMap.set(r.Name, new Set())
-				if(r.URL) userMap.get(r.Name).add(r.URL)
-			}
+	function computeSimilarityGrid(){
+		if(!rawRows.length){alert('No data');return null}
+		const promptVal = promptFilter.value
+		const dayVal = dayFilter.value
+		const citationTypeVal = citationTypeFilter.value
+		// Build map: prompt -> user -> set(urls)
+		const promptUserMap = new Map()
+		for(const r of rawRows){
+			if(dayVal!=='__ALL__' && r.Day!==dayVal) continue
+			if(citationTypeVal!=='__ALL__' && r.CitationType!==citationTypeVal) continue
+			const p = r.Prompt||'__MISSING__'
+			if(promptVal!=='__ALL__' && p!==promptVal) continue
+			if(!promptUserMap.has(p)) promptUserMap.set(p, new Map())
+			const userMap = promptUserMap.get(p)
+			if(!userMap.has(r.Name)) userMap.set(r.Name, new Set())
+			if(r.URL) userMap.get(r.Name).add(r.URL)
+		}
 
 			// If aggregated across prompts, we will compute per-prompt then aggregate
 			const userList = users.slice()
@@ -421,7 +434,8 @@
 	heroStat.querySelector('.value').textContent = Math.round(avg*100) + '%'
 	const promptText = promptFilter.value === '__ALL__' ? 'All Prompts' : promptFilter.value
 	const dayText = dayFilter.value === '__ALL__' ? 'All Days' : dayFilter.value
-	const contextText = `${promptText}\n${dayText}`
+	const citationText = citationTypeFilter.value === '__ALL__' ? '' : ` (${citationTypeFilter.value})`
+	const contextText = `${promptText}\n${dayText}${citationText}`
 	heroStat.querySelector('.context').textContent = contextText
 	
 	// Render day/prompt heatmap
@@ -431,9 +445,13 @@
 	function renderDayPromptHeatmap() {
 		if(!rawRows.length) return
 		
+		const citationTypeVal = citationTypeFilter.value
+		
 		// Build structure: day -> prompt -> users -> urls
 		const structure = new Map()
 		for(const r of rawRows) {
+			if(citationTypeVal!=='__ALL__' && r.CitationType!==citationTypeVal) continue
+			
 			const day = r.Day || '__MISSING__'
 			const prompt = r.Prompt || '__MISSING__'
 			const user = r.Name
