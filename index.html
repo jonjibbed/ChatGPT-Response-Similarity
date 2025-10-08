@@ -377,42 +377,42 @@
 
 		// rows
 	const g = svg.append('g').attr('transform',`translate(${labelWidth},${labelHeight})`)
-		// labels
-		g.selectAll('.rowLabel').data(mat.users).enter().append('text')
-			.attr('x',-6).attr('y',(d,i)=>i*cellSize+cellSize/1.5)
+	// labels
+	g.selectAll('.rowLabel').data(mat.users).enter().append('text')
+		.attr('x',-6).attr('y',(d,i)=>i*cellSize+cellSize/1.5)
 		.attr('text-anchor','end')
-		.attr('font-size', 11)
+		.attr('font-size', 13)
 		.attr('font-weight', 'bold')
 		.text(d=>anonymizeName(d))
-		g.selectAll('.colLabel').data(mat.users).enter().append('text')
-			.attr('x',(d,i)=>i*cellSize+cellSize/2).attr('y',-6)
-			.attr('text-anchor','start')
-		.attr('font-size', 11)
+	g.selectAll('.colLabel').data(mat.users).enter().append('text')
+		.attr('x',(d,i)=>i*cellSize+cellSize/2).attr('y',-6)
+		.attr('text-anchor','start')
+		.attr('font-size', 13)
 		.attr('font-weight', 'bold')
-			.attr('transform',(d,i)=>`rotate(-45 ${i*cellSize+cellSize/2} -6)`)
-			.text(d=>anonymizeName(d))
+		.attr('transform',(d,i)=>`rotate(-45 ${i*cellSize+cellSize/2} -6)`)
+		.text(d=>anonymizeName(d))
 
-		const rows = g.selectAll('.row').data(mat.grid).enter().append('g').attr('transform',(d,i)=>`translate(0,${i*cellSize})`)
-		rows.selectAll('rect').data((d,rowIdx)=>d.map((val,colIdx)=>({val,rowIdx,colIdx}))).enter().append('rect')
-			.attr('x',d=>d.colIdx*cellSize).attr('y',0).attr('width',cellSize-2).attr('height',cellSize-2)
-			.attr('class','cell')
-			.style('fill',d=>{
-				// Don't color the diagonal (same person)
-				if(d.rowIdx === d.colIdx) return '#f5f5f5'
-				return color(d.val)
-			})
+	const rows = g.selectAll('.row').data(mat.grid).enter().append('g').attr('transform',(d,i)=>`translate(0,${i*cellSize})`)
+	rows.selectAll('rect').data((d,rowIdx)=>d.map((val,colIdx)=>({val,rowIdx,colIdx})).filter(d=>d.rowIdx >= d.colIdx)).enter().append('rect')
+		.attr('x',d=>d.colIdx*cellSize).attr('y',0).attr('width',cellSize-2).attr('height',cellSize-2)
+		.attr('class','cell')
+		.style('fill',d=>{
+			// Don't color the diagonal (same person)
+			if(d.rowIdx === d.colIdx) return '#f5f5f5'
+			return color(d.val)
+		})
 		
-		// Add text labels with percentage
-		rows.selectAll('text').data((d,rowIdx)=>d.map((val,colIdx)=>({val,rowIdx,colIdx}))).enter().append('text')
-			.attr('x',d=>d.colIdx*cellSize+cellSize/2)
-			.attr('y',cellSize/2)
-			.attr('dy','0.35em')
-			.attr('text-anchor','middle')
+	// Add text labels with percentage
+	rows.selectAll('text').data((d,rowIdx)=>d.map((val,colIdx)=>({val,rowIdx,colIdx})).filter(d=>d.rowIdx >= d.colIdx)).enter().append('text')
+		.attr('x',d=>d.colIdx*cellSize+cellSize/2)
+		.attr('y',cellSize/2)
+		.attr('dy','0.35em')
+		.attr('text-anchor','middle')
 		.attr('font-size', Math.min(14, cellSize/3))
 		.attr('font-weight', 'bold')
-			.attr('fill', d=>{
-				// Different text color for diagonal
-				if(d.rowIdx === d.colIdx) return '#999'
+	.attr('fill', d=>{
+		// Different text color for diagonal
+		if(d.rowIdx === d.colIdx) return '#999'
 		return '#000'
 	})
 		.text(d=>{
@@ -501,12 +501,12 @@
 			grid.push(row)
 		}
 		
-		// Render with D3
-		d3.select('#dayPromptChart').selectAll('*').remove()
-		
-		const cellSize = 60
-		const labelWidth = 300
-		const labelHeight = 40
+	// Render with D3
+	d3.select('#dayPromptChart').selectAll('*').remove()
+	
+	const cellSize = 80
+	const labelWidth = 320
+	const labelHeight = 40
 		const width = labelWidth + dayList.length * cellSize + 20
 		const height = labelHeight + promptList.length * cellSize + 20
 		
@@ -518,19 +518,47 @@
 		
 		const g = svg.append('g').attr('transform', `translate(${labelWidth},${labelHeight})`)
 		
-		// Column labels (days)
-		g.selectAll('.colLabel').data(dayList).enter().append('text')
-			.attr('x',(d,i)=>i*cellSize+cellSize/2).attr('y',-6)
-			.attr('text-anchor','middle')
-			.attr('font-size', 12)
-			.text(d=>d)
+	// Column labels (days)
+	g.selectAll('.colLabel').data(dayList).enter().append('text')
+		.attr('x',(d,i)=>i*cellSize+cellSize/2).attr('y',-6)
+		.attr('text-anchor','middle')
+		.attr('font-size', 14)
+		.attr('font-weight', 'bold')
+		.text(d=>d)
 		
-		// Row labels (prompts)
-		g.selectAll('.rowLabel').data(promptList).enter().append('text')
-			.attr('x',-6).attr('y',(d,i)=>i*cellSize+cellSize/1.5)
-			.attr('text-anchor','end')
-			.attr('font-size', 11)
-			.text(d=>d.length > 50 ? d.substring(0,47)+'...' : d)
+	// Row labels (prompts) - with wrapping
+	const wrapWidth = 300
+	g.selectAll('.rowLabel').data(promptList).enter().append('text')
+		.attr('x',-6).attr('y',(d,i)=>i*cellSize+cellSize/2)
+		.attr('text-anchor','end')
+		.attr('font-size', 12)
+		.attr('font-weight', 'bold')
+		.each(function(d) {
+			const text = d3.select(this)
+			const words = d.split(/\s+/)
+			let line = []
+			let lineNumber = 0
+			const lineHeight = 1.1
+			const y = text.attr('y')
+			const dy = 0
+			let tspan = text.append('tspan').attr('x', -6).attr('y', y).attr('dy', dy + 'em')
+			
+			words.forEach(word => {
+				line.push(word)
+				tspan.text(line.join(' '))
+				if (tspan.node().getComputedTextLength() > wrapWidth) {
+					line.pop()
+					tspan.text(line.join(' '))
+					line = [word]
+					lineNumber++
+					tspan = text.append('tspan')
+						.attr('x', -6)
+						.attr('y', y)
+						.attr('dy', lineNumber * lineHeight + 'em')
+						.text(word)
+				}
+			})
+		})
 		
 		// Cells
 		const rows = g.selectAll('.row').data(grid).enter().append('g')
