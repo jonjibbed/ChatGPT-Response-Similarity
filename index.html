@@ -167,6 +167,7 @@
 	let users = []
 	let prompts = []
 	let days = []
+	let currentHeroValue = 0 // Track current hero stat value for animation
 	
 	// Anonymous name mapping
 	const nameMapping = {
@@ -184,6 +185,33 @@
 	
 	function anonymizeName(name) {
 		return nameMapping[name] || name
+	}
+
+	// Animate hero stat number counting up/down
+	function animateHeroStat(targetValue) {
+		const duration = 600 // milliseconds
+		const startValue = currentHeroValue
+		const startTime = performance.now()
+		const valueElement = heroStat.querySelector('.value')
+		
+		function updateValue(currentTime) {
+			const elapsed = currentTime - startTime
+			const progress = Math.min(elapsed / duration, 1)
+			
+			// Easing function (ease-out)
+			const easeProgress = 1 - Math.pow(1 - progress, 3)
+			
+			const currentVal = startValue + (targetValue - startValue) * easeProgress
+			valueElement.textContent = Math.round(currentVal) + '%'
+			
+			if (progress < 1) {
+				requestAnimationFrame(updateValue)
+			} else {
+				currentHeroValue = targetValue
+			}
+		}
+		
+		requestAnimationFrame(updateValue)
 	}
 
 		function parseCSVData(res) {
@@ -434,8 +462,8 @@
 		}
 		const avg = offDiagonal.length > 0 ? offDiagonal.reduce((a,b)=>a+b,0)/offDiagonal.length : 0
 		
-	// Update hero stat
-	heroStat.querySelector('.value').textContent = Math.round(avg*100) + '%'
+	// Update hero stat with animation
+	animateHeroStat(avg * 100)
 	
 	// Render day/prompt heatmap
 	renderDayPromptHeatmap()
