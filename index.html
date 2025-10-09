@@ -128,13 +128,13 @@
 	<button id="exportMatrix" class="hidden">Export similarity CSV</button>
 
 	<div style="display:flex;gap:32px;margin-top:40px;flex-wrap:wrap">
-		<div style="flex:1;min-width:500px">
+		<div style="flex:1 1 600px;max-width:100%">
 			<h3 style="margin-bottom:16px;font-size:18px">Person-to-Person Similarity</h3>
 			<p style="color:#666;font-size:13px;margin-bottom:16px">Comparing citation overlap between individual participants</p>
-			<div id="chart" style="border:1px solid #eee;padding:8px;display:flex;justify-content:center"></div>
+			<div id="chart" style="border:1px solid #eee;padding:8px;display:flex;justify-content:center;overflow-x:auto"></div>
 		</div>
 		
-		<div style="flex:1;min-width:500px">
+		<div style="flex:1 1 600px;max-width:100%">
 			<h3 style="margin-bottom:16px;font-size:18px">Day & Prompt Similarity</h3>
 			<p style="color:#666;font-size:13px;margin-bottom:16px">Average similarity between all participants for each day/prompt combination</p>
 			<div id="dayPromptChart" style="border:1px solid #eee;padding:16px;overflow-x:auto;display:flex;justify-content:center"></div>
