@@ -7,45 +7,36 @@
 	<!-- D3 + PapaParse from CDN -->
 	<script src="https://d3js.org/d3.v7.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+	<!-- Inter font -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 	<style>
-	:root{font-family:'Courier New',Consolas,Monaco,monospace}
-	body{max-width:1400px;margin:0 auto;padding:24px}
-	.hero-stat{
-		background: #f5f5f5;
-		border: 2px solid #ff6666;
-		color: #333;
-		padding: 20px 24px;
-		border-radius: 12px;
-		text-align: center;
-		box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-	}
-	.hero-stat .value{
-		font-size: 48px;
-		font-weight: bold;
-		margin: 8px 0;
-		color: #ff6666;
-	}
-	.hero-stat .label{
-		font-size: 14px;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 1px;
-		color: #666;
-	}
-	.hero-stat .context{
-		font-size: 12px;
-		margin-top: 8px;
-		white-space: pre-line;
-		color: #666;
-	}
+	:root{font-family:Consolas,'Courier New',Monaco,monospace}
+	body{max-width:1800px;margin:0 auto;padding:24px;font-family:'Inter',sans-serif}
 	.filter-row{
 		display:flex;
 		gap:20px;
-		align-items:flex-start;
+		align-items:center;
 		margin-bottom:24px;
+		position:sticky;
+		top:0;
+		background:#fff;
+		padding:16px 0;
+		z-index:50;
+		border-bottom:1px solid #ddd;
 	}
 	.filter-group{
-		flex:0 0 200px;
+		flex:0 0 auto;
+	}
+	#promptFilter{
+		max-width:400px;
+	}
+	#dayFilter{
+		min-width:150px;
+	}
+	#citationTypeFilter{
+		min-width:180px;
 	}
 	.filter-group label{
 		display:block;
@@ -54,17 +45,11 @@
 		color:#333;
 		margin-bottom:6px;
 	}
-	.scale-sticky{
-		position:fixed;
-		top:24px;
-		right:24px;
-		z-index:100;
-		width:250px;
-	}
-	#chart{min-height:520px;border:1px solid #eee;padding:8px;margin-bottom:40px;display:flex;justify-content:center;}
-	button{cursor:pointer;padding:8px 12px;background:#667eea;color:white;border:none;border-radius:4px;margin:4px 0;}
+	button{cursor:pointer;padding:8px 12px;background:#667eea;color:white;border:none;border-radius:4px;margin:4px 0;font-family:'Inter',sans-serif;}
 	button:hover{background:#5568d3}
-	select{width:100%;padding:8px;border:1px solid #ddd;border-radius:4px}
+	select{padding:8px;border:1px solid #ddd;border-radius:4px;font-family:'Inter',sans-serif;}
+	h2,h3,p,label{font-family:'Inter',sans-serif;}
+	svg text{font-family:Consolas,'Courier New',Monaco,monospace !important;}
 		.cell{stroke:#fff}
 	.hidden{display:none}
 	.color-legend{
@@ -73,6 +58,7 @@
 		border:2px solid #ff6666;
 		border-radius:8px;
 		box-shadow:0 2px 8px rgba(0,0,0,0.1);
+		font-family:'Inter',sans-serif;
 	}
 	.color-legend-title{
 		font-size:11px;
@@ -98,64 +84,83 @@
 	</style>
 </head>
 <body>
-	<h2>ChatGPT Response Similarity Explorer</h2>
-
-	<div class="scale-sticky">
-		<div class="color-legend">
-			<div class="color-legend-title">Similarity Scale</div>
-			<div class="color-scale"></div>
-			<div class="color-labels">
-				<span>0%</span>
-				<span>100%</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="hero-stat" id="heroStat" style="max-width:400px;margin:0 auto 32px auto">
-		<div class="label">Average Similarity</div>
-		<div class="value">—</div>
-		<div class="context">Loading data...</div>
-	</div>
+	<h2 style="text-align:center">ChatGPT Response Similarity Explorer</h2>
 
 	<div class="filter-row">
-		<div class="filter-group">
-			<label>Prompt Filter</label>
-			<select id="promptFilter"><option value="__ALL__">All prompts (mean average)</option></select>
-		</div>
-		
-		<div class="filter-group">
-			<label>Day Filter</label>
+		<div style="flex:1;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+			<div class="filter-group">
+				<label>Prompt Filter</label>
+				<select id="promptFilter"><option value="__ALL__">All prompts</option></select>
+			</div>
+			
+			<div class="filter-group">
+				<label>Day Filter</label>
 			<select id="dayFilter"><option value="__ALL__">All days</option></select>
+			</div>
+			
+			<div class="filter-group">
+				<label>Citation Type</label>
+				<select id="citationTypeFilter">
+					<option value="__ALL__">All types</option>
+					<option value="Citation" selected>Citation URLs</option>
+					<option value="Supporting">Supporting URLs</option>
+				</select>
+			</div>
 		</div>
-		
-		<div class="filter-group">
-			<label>Citation Type</label>
-			<select id="citationTypeFilter">
-				<option value="__ALL__">All types</option>
-				<option value="Citation" selected>Citation</option>
-				<option value="Supporting">Supporting</option>
-			</select>
+
+		<div style="display:flex;align-items:center;gap:24px;margin-left:auto">
+			<div id="heroStat" style="text-align:center;padding:16px 32px;background:#f5f5f5;border-radius:8px;min-width:260px">
+				<div class="label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#999;margin-bottom:8px">Overall ChatGPT Response Similarity</div>
+				<div class="value" style="font-size:40px;font-weight:bold;color:#ff6666;line-height:1">—</div>
+			</div>
+			
+			<div class="color-legend">
+				<div class="color-legend-title">Similarity Scale</div>
+				<div class="color-scale"></div>
+				<div class="color-labels">
+					<span>0%</span>
+					<span>100%</span>
+				</div>
+			</div>
 		</div>
 	</div>
 
 	<button id="exportMatrix" class="hidden">Export similarity CSV</button>
 
-	<h3 style="margin-top:40px;margin-bottom:16px;font-size:18px">Person-to-Person Similarity</h3>
-	<p style="color:#666;font-size:13px;margin-bottom:16px">Comparing citation overlap between individual participants</p>
-		<div id="chart"></div>
-
-	<div style="margin-top:60px">
-		<h3 style="margin-bottom:16px;font-size:18px">Day & Prompt Similarity Matrix</h3>
-		<p style="color:#666;font-size:13px;margin-bottom:16px">Average similarity between all participants for each day/prompt combination</p>
-		<div id="dayPromptChart" style="border:1px solid #eee;padding:16px;overflow-x:auto;display:flex;justify-content:center"></div>
+	<div style="display:flex;gap:32px;margin-top:40px;flex-wrap:wrap">
+		<div style="flex:1;min-width:500px">
+			<h3 style="margin-bottom:16px;font-size:18px">Person-to-Person Similarity</h3>
+			<p style="color:#666;font-size:13px;margin-bottom:16px">Comparing citation overlap between individual participants</p>
+			<div id="chart" style="border:1px solid #eee;padding:8px;display:flex;justify-content:center"></div>
+		</div>
+		
+		<div style="flex:1;min-width:500px">
+			<h3 style="margin-bottom:16px;font-size:18px">Day & Prompt Similarity</h3>
+			<p style="color:#666;font-size:13px;margin-bottom:16px">Average similarity between all participants for each day/prompt combination</p>
+			<div id="dayPromptChart" style="border:1px solid #eee;padding:16px;overflow-x:auto;display:flex;justify-content:center"></div>
+		</div>
+	</div>
+	
+	<div style="display:flex;gap:32px;margin-top:60px;flex-wrap:wrap">
+		<div style="flex:1;min-width:500px">
+			<h3 style="margin-bottom:16px;font-size:18px">Ever-Present URLs</h3>
+			<p style="color:#666;font-size:13px;margin-bottom:16px">URLs that appear for ALL people within the selected filters</p>
+			<div id="consistentUrls" style="border:1px solid #eee;padding:16px;background:#f9f9f9"></div>
+		</div>
+		
+		<div style="flex:1;min-width:500px">
+			<h3 style="margin-bottom:16px;font-size:18px">Unique URLs</h3>
+			<p style="color:#666;font-size:13px;margin-bottom:16px">URLs that appear for only ONE person within the selected filters</p>
+			<div id="uniqueUrls" style="border:1px solid #eee;padding:16px;background:#f9f9f9"></div>
+		</div>
 	</div>
 
 	<script>
 		// Use tabs for indentation throughout
-	const promptFilter = document.getElementById('promptFilter')
-	const dayFilter = document.getElementById('dayFilter')
+		const promptFilter = document.getElementById('promptFilter')
+		const dayFilter = document.getElementById('dayFilter')
 	const citationTypeFilter = document.getElementById('citationTypeFilter')
-	const exportBtn = document.getElementById('exportMatrix')
+		const exportBtn = document.getElementById('exportMatrix')
 	const heroStat = document.getElementById('heroStat')
 
 	let rawRows = []
@@ -240,10 +245,9 @@
 				download: true,
 				complete: parseCSVData,
 				error: function(err){
-					console.error('Error loading data.csv:', err)
-					heroStat.querySelector('.value').textContent = 'Error'
-					heroStat.querySelector('.context').textContent = 'Could not load data.csv. Upload a file manually.'
-				}
+				console.error('Error loading data.csv:', err)
+				heroStat.querySelector('.value').textContent = 'Error'
+			}
 			})
 		}
 
@@ -261,7 +265,7 @@
 			console.log('Days:', days.length, days)
 
 			// populate filters
-			promptFilter.innerHTML = '<option value="__ALL__">All prompts (aggregate)</option>' + prompts.map(p=>`<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('')
+		promptFilter.innerHTML = '<option value="__ALL__">All prompts</option>' + prompts.map(p=>`<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('')
 			dayFilter.innerHTML = '<option value="__ALL__">All days</option>' + days.map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('')
 
 			render()
@@ -269,8 +273,8 @@
 
 		function escapeHtml(s){return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
 
-	promptFilter.addEventListener('change', render)
-	dayFilter.addEventListener('change', render)
+		promptFilter.addEventListener('change', render)
+		dayFilter.addEventListener('change', render)
 	citationTypeFilter.addEventListener('change', render)
 
 		exportBtn.addEventListener('click', ()=>{
@@ -292,23 +296,23 @@
 		return [header,...rows].join('\n')
 	}
 
-	function computeSimilarityGrid(){
-		if(!rawRows.length){alert('No data');return null}
-		const promptVal = promptFilter.value
-		const dayVal = dayFilter.value
+		function computeSimilarityGrid(){
+			if(!rawRows.length){alert('No data');return null}
+			const promptVal = promptFilter.value
+			const dayVal = dayFilter.value
 		const citationTypeVal = citationTypeFilter.value
-		// Build map: prompt -> user -> set(urls)
-		const promptUserMap = new Map()
-		for(const r of rawRows){
-			if(dayVal!=='__ALL__' && r.Day!==dayVal) continue
+			// Build map: prompt -> user -> set(urls)
+			const promptUserMap = new Map()
+			for(const r of rawRows){
+				if(dayVal!=='__ALL__' && r.Day!==dayVal) continue
 			if(citationTypeVal!=='__ALL__' && r.CitationType!==citationTypeVal) continue
-			const p = r.Prompt||'__MISSING__'
-			if(promptVal!=='__ALL__' && p!==promptVal) continue
-			if(!promptUserMap.has(p)) promptUserMap.set(p, new Map())
-			const userMap = promptUserMap.get(p)
-			if(!userMap.has(r.Name)) userMap.set(r.Name, new Set())
-			if(r.URL) userMap.get(r.Name).add(r.URL)
-		}
+				const p = r.Prompt||'__MISSING__'
+				if(promptVal!=='__ALL__' && p!==promptVal) continue
+				if(!promptUserMap.has(p)) promptUserMap.set(p, new Map())
+				const userMap = promptUserMap.get(p)
+				if(!userMap.has(r.Name)) userMap.set(r.Name, new Set())
+				if(r.URL) userMap.get(r.Name).add(r.URL)
+			}
 
 			// If aggregated across prompts, we will compute per-prompt then aggregate
 			const userList = users.slice()
@@ -377,42 +381,42 @@
 
 		// rows
 	const g = svg.append('g').attr('transform',`translate(${labelWidth},${labelHeight})`)
-	// labels
-	g.selectAll('.rowLabel').data(mat.users).enter().append('text')
-		.attr('x',-6).attr('y',(d,i)=>i*cellSize+cellSize/1.5)
+		// labels
+		g.selectAll('.rowLabel').data(mat.users).enter().append('text')
+			.attr('x',-6).attr('y',(d,i)=>i*cellSize+cellSize/1.5)
 		.attr('text-anchor','end')
 		.attr('font-size', 13)
 		.attr('font-weight', 'bold')
 		.text(d=>anonymizeName(d))
-	g.selectAll('.colLabel').data(mat.users).enter().append('text')
-		.attr('x',(d,i)=>i*cellSize+cellSize/2).attr('y',-6)
-		.attr('text-anchor','start')
+		g.selectAll('.colLabel').data(mat.users).enter().append('text')
+			.attr('x',(d,i)=>i*cellSize+cellSize/2).attr('y',-6)
+			.attr('text-anchor','start')
 		.attr('font-size', 13)
 		.attr('font-weight', 'bold')
-		.attr('transform',(d,i)=>`rotate(-45 ${i*cellSize+cellSize/2} -6)`)
-		.text(d=>anonymizeName(d))
+			.attr('transform',(d,i)=>`rotate(-45 ${i*cellSize+cellSize/2} -6)`)
+			.text(d=>anonymizeName(d))
 
-	const rows = g.selectAll('.row').data(mat.grid).enter().append('g').attr('transform',(d,i)=>`translate(0,${i*cellSize})`)
+		const rows = g.selectAll('.row').data(mat.grid).enter().append('g').attr('transform',(d,i)=>`translate(0,${i*cellSize})`)
 	rows.selectAll('rect').data((d,rowIdx)=>d.map((val,colIdx)=>({val,rowIdx,colIdx})).filter(d=>d.rowIdx >= d.colIdx)).enter().append('rect')
-		.attr('x',d=>d.colIdx*cellSize).attr('y',0).attr('width',cellSize-2).attr('height',cellSize-2)
-		.attr('class','cell')
-		.style('fill',d=>{
-			// Don't color the diagonal (same person)
-			if(d.rowIdx === d.colIdx) return '#f5f5f5'
-			return color(d.val)
-		})
+			.attr('x',d=>d.colIdx*cellSize).attr('y',0).attr('width',cellSize-2).attr('height',cellSize-2)
+			.attr('class','cell')
+			.style('fill',d=>{
+				// Don't color the diagonal (same person)
+				if(d.rowIdx === d.colIdx) return '#f5f5f5'
+				return color(d.val)
+			})
 		
-	// Add text labels with percentage
+		// Add text labels with percentage
 	rows.selectAll('text').data((d,rowIdx)=>d.map((val,colIdx)=>({val,rowIdx,colIdx})).filter(d=>d.rowIdx >= d.colIdx)).enter().append('text')
-		.attr('x',d=>d.colIdx*cellSize+cellSize/2)
-		.attr('y',cellSize/2)
-		.attr('dy','0.35em')
-		.attr('text-anchor','middle')
+			.attr('x',d=>d.colIdx*cellSize+cellSize/2)
+			.attr('y',cellSize/2)
+			.attr('dy','0.35em')
+			.attr('text-anchor','middle')
 		.attr('font-size', Math.min(14, cellSize/3))
 		.attr('font-weight', 'bold')
-	.attr('fill', d=>{
-		// Different text color for diagonal
-		if(d.rowIdx === d.colIdx) return '#999'
+			.attr('fill', d=>{
+				// Different text color for diagonal
+				if(d.rowIdx === d.colIdx) return '#999'
 		return '#000'
 	})
 		.text(d=>{
@@ -432,14 +436,15 @@
 		
 	// Update hero stat
 	heroStat.querySelector('.value').textContent = Math.round(avg*100) + '%'
-	const promptText = promptFilter.value === '__ALL__' ? 'All Prompts' : promptFilter.value
-	const dayText = dayFilter.value === '__ALL__' ? 'All Days' : dayFilter.value
-	const citationText = citationTypeFilter.value === '__ALL__' ? '' : ` (${citationTypeFilter.value})`
-	const contextText = `${promptText}\n${dayText}${citationText}`
-	heroStat.querySelector('.context').textContent = contextText
 	
 	// Render day/prompt heatmap
 	renderDayPromptHeatmap()
+	
+	// Render consistent URLs table
+	renderConsistentUrls()
+	
+	// Render unique URLs table
+	renderUniqueUrls()
 	}
 
 	function renderDayPromptHeatmap() {
@@ -591,6 +596,289 @@
 			if(d.val === null) return '—'
 			return Math.round(d.val*100)+'%'
 		})
+	}
+
+	function renderConsistentUrls() {
+		if(!rawRows.length) return
+		
+		const container = document.getElementById('consistentUrls')
+		container.innerHTML = ''
+		
+		const promptVal = promptFilter.value
+		const dayVal = dayFilter.value
+		const citationTypeVal = citationTypeFilter.value
+		
+		// Filter rows based on current filters
+		const filteredRows = rawRows.filter(r => {
+			if(promptVal !== '__ALL__' && r.Prompt !== promptVal) return false
+			if(dayVal !== '__ALL__' && r.Day !== dayVal) return false
+			if(citationTypeVal !== '__ALL__' && r.CitationType !== citationTypeVal) return false
+			return r.URL && r.URL.trim() !== ''
+		})
+		
+		if(filteredRows.length === 0) {
+			container.innerHTML = '<p style="color:#999;font-style:italic">No data for the selected filters</p>'
+			return
+		}
+		
+		// Group by URL
+		const urlStats = new Map()
+		for(const row of filteredRows) {
+			if(!urlStats.has(row.URL)) {
+				urlStats.set(row.URL, {
+					url: row.URL,
+					people: new Set(),
+					days: new Set(),
+					prompts: new Set(),
+					count: 0
+				})
+			}
+			const stats = urlStats.get(row.URL)
+			stats.people.add(row.Name)
+			stats.days.add(row.Day)
+			stats.prompts.add(row.Prompt)
+			stats.count++
+		}
+		
+		// Convert to array and calculate consistency metrics
+		const urlArray = Array.from(urlStats.values()).map(stats => ({
+			url: stats.url,
+			peopleCount: stats.people.size,
+			daysCount: stats.days.size,
+			promptsCount: stats.prompts.size,
+			totalCount: stats.count
+		}))
+		
+		// Sort by number of people (most consistent first)
+		urlArray.sort((a, b) => {
+			if(b.peopleCount !== a.peopleCount) return b.peopleCount - a.peopleCount
+			if(b.daysCount !== a.daysCount) return b.daysCount - a.daysCount
+			return b.totalCount - a.totalCount
+		})
+		
+		// Show only URLs that appear for ALL people (ever-present)
+		const totalPeople = users.length
+		const consistentUrls = urlArray.filter(u => u.peopleCount === totalPeople)
+		
+		if(consistentUrls.length === 0) {
+			container.innerHTML = '<p style="color:#999;font-style:italic">No URLs appeared for all people</p>'
+			return
+		}
+		
+		// Create table
+		const table = document.createElement('table')
+		table.style.width = '100%'
+		table.style.borderCollapse = 'collapse'
+		table.style.fontFamily = "'Inter',sans-serif"
+		table.style.fontSize = '13px'
+		table.style.background = '#fff'
+		
+		// Header
+		const thead = table.createTHead()
+		const headerRow = thead.insertRow()
+		headerRow.style.background = '#f5f5f5'
+		headerRow.style.fontWeight = 'bold'
+		
+		const headers = ['URL', 'People', 'Days', 'Prompts']
+		headers.forEach(text => {
+			const th = document.createElement('th')
+			th.textContent = text
+			th.style.padding = '12px'
+			th.style.textAlign = 'left'
+			th.style.borderBottom = '2px solid #ddd'
+			headerRow.appendChild(th)
+		})
+		
+		// Body
+		const tbody = table.createTBody()
+		consistentUrls.slice(0, 50).forEach((urlData, idx) => {
+			const row = tbody.insertRow()
+			row.style.borderBottom = '1px solid #eee'
+			if(idx % 2 === 0) row.style.background = '#fafafa'
+			
+			// URL cell
+			const urlCell = row.insertCell()
+			urlCell.style.padding = '10px 12px'
+			const link = document.createElement('a')
+			link.href = urlData.url
+			link.target = '_blank'
+			link.textContent = urlData.url
+			link.style.color = '#0066cc'
+			link.style.textDecoration = 'none'
+			link.style.wordBreak = 'break-all'
+			link.addEventListener('mouseover', () => link.style.textDecoration = 'underline')
+			link.addEventListener('mouseout', () => link.style.textDecoration = 'none')
+			urlCell.appendChild(link)
+			
+			// Stats cells
+			const peopleCell = row.insertCell()
+			peopleCell.textContent = urlData.peopleCount
+			peopleCell.style.padding = '10px 12px'
+			peopleCell.style.fontFamily = 'Consolas,"Courier New",monospace'
+			peopleCell.style.textAlign = 'center'
+			
+			const daysCell = row.insertCell()
+			daysCell.textContent = urlData.daysCount
+			daysCell.style.padding = '10px 12px'
+			daysCell.style.fontFamily = 'Consolas,"Courier New",monospace'
+			daysCell.style.textAlign = 'center'
+			
+		const promptsCell = row.insertCell()
+		promptsCell.textContent = urlData.promptsCount
+		promptsCell.style.padding = '10px 12px'
+		promptsCell.style.fontFamily = 'Consolas,"Courier New",monospace'
+		promptsCell.style.textAlign = 'center'
+	})
+	
+	container.appendChild(table)
+	
+	if(consistentUrls.length > 50) {
+			const note = document.createElement('p')
+			note.style.marginTop = '12px'
+			note.style.fontSize = '12px'
+			note.style.color = '#666'
+			note.style.fontStyle = 'italic'
+			note.textContent = `Showing top 50 of ${consistentUrls.length} consistent URLs`
+			container.appendChild(note)
+		}
+	}
+
+	function renderUniqueUrls() {
+		if(!rawRows.length) return
+		
+		const container = document.getElementById('uniqueUrls')
+		container.innerHTML = ''
+		
+		const promptVal = promptFilter.value
+		const dayVal = dayFilter.value
+		const citationTypeVal = citationTypeFilter.value
+		
+		// Filter rows based on current filters
+		const filteredRows = rawRows.filter(r => {
+			if(promptVal !== '__ALL__' && r.Prompt !== promptVal) return false
+			if(dayVal !== '__ALL__' && r.Day !== dayVal) return false
+			if(citationTypeVal !== '__ALL__' && r.CitationType !== citationTypeVal) return false
+			return r.URL && r.URL.trim() !== ''
+		})
+		
+		if(filteredRows.length === 0) {
+			container.innerHTML = '<p style="color:#999;font-style:italic">No data for the selected filters</p>'
+			return
+		}
+		
+		// Group by URL
+		const urlStats = new Map()
+		for(const row of filteredRows) {
+			if(!urlStats.has(row.URL)) {
+				urlStats.set(row.URL, {
+					url: row.URL,
+					people: new Set(),
+					days: new Set(),
+					prompts: new Set(),
+					count: 0
+				})
+			}
+			const stats = urlStats.get(row.URL)
+			stats.people.add(row.Name)
+			stats.days.add(row.Day)
+			stats.prompts.add(row.Prompt)
+			stats.count++
+		}
+		
+		// Convert to array and calculate consistency metrics
+		const urlArray = Array.from(urlStats.values()).map(stats => ({
+			url: stats.url,
+			peopleCount: stats.people.size,
+			daysCount: stats.days.size,
+			promptsCount: stats.prompts.size,
+			totalCount: stats.count
+		}))
+		
+		// Sort by total count (most frequent first)
+		urlArray.sort((a, b) => {
+			if(b.totalCount !== a.totalCount) return b.totalCount - a.totalCount
+			if(b.daysCount !== a.daysCount) return b.daysCount - a.daysCount
+			return b.promptsCount - a.promptsCount
+		})
+		
+		// Show only URLs that appear for exactly 1 person
+		const uniqueUrls = urlArray.filter(u => u.peopleCount === 1)
+		
+		if(uniqueUrls.length === 0) {
+			container.innerHTML = '<p style="color:#999;font-style:italic">No URLs appeared for only one person</p>'
+			return
+		}
+		
+		// Create table
+		const table = document.createElement('table')
+		table.style.width = '100%'
+		table.style.borderCollapse = 'collapse'
+		table.style.fontFamily = "'Inter',sans-serif"
+		table.style.fontSize = '13px'
+		table.style.background = '#fff'
+		
+		// Header
+		const thead = table.createTHead()
+		const headerRow = thead.insertRow()
+		headerRow.style.background = '#f5f5f5'
+		headerRow.style.fontWeight = 'bold'
+		
+		const headers = ['URL', 'Days', 'Prompts']
+		headers.forEach(text => {
+			const th = document.createElement('th')
+			th.textContent = text
+			th.style.padding = '12px'
+			th.style.textAlign = 'left'
+			th.style.borderBottom = '2px solid #ddd'
+			headerRow.appendChild(th)
+		})
+		
+		// Body
+		const tbody = table.createTBody()
+		uniqueUrls.slice(0, 50).forEach((urlData, idx) => {
+			const row = tbody.insertRow()
+			row.style.borderBottom = '1px solid #eee'
+			if(idx % 2 === 0) row.style.background = '#fafafa'
+			
+			// URL cell
+			const urlCell = row.insertCell()
+			urlCell.style.padding = '10px 12px'
+			const link = document.createElement('a')
+			link.href = urlData.url
+			link.target = '_blank'
+			link.textContent = urlData.url
+			link.style.color = '#0066cc'
+			link.style.textDecoration = 'none'
+			link.style.wordBreak = 'break-all'
+			link.addEventListener('mouseover', () => link.style.textDecoration = 'underline')
+			link.addEventListener('mouseout', () => link.style.textDecoration = 'none')
+			urlCell.appendChild(link)
+			
+			// Stats cells (no people count since it's always 1)
+			const daysCell = row.insertCell()
+			daysCell.textContent = urlData.daysCount
+			daysCell.style.padding = '10px 12px'
+			daysCell.style.fontFamily = 'Consolas,"Courier New",monospace'
+			daysCell.style.textAlign = 'center'
+			
+		const promptsCell = row.insertCell()
+		promptsCell.textContent = urlData.promptsCount
+		promptsCell.style.padding = '10px 12px'
+		promptsCell.style.fontFamily = 'Consolas,"Courier New",monospace'
+		promptsCell.style.textAlign = 'center'
+	})
+	
+	container.appendChild(table)
+	
+	if(uniqueUrls.length > 50) {
+			const note = document.createElement('p')
+			note.style.marginTop = '12px'
+			note.style.fontSize = '12px'
+			note.style.color = '#666'
+			note.style.fontStyle = 'italic'
+			note.textContent = `Showing top 50 of ${uniqueUrls.length} unique URLs`
+			container.appendChild(note)
+		}
 	}
 
 	// Auto-load data on page load
