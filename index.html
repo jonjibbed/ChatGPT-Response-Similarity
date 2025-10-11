@@ -276,6 +276,20 @@
 		'Rachael Murdoch': 'Person 10'
 	}
 	
+	// Static list of all users to maintain consistent ordering
+	const allUsersOrdered = [
+		'Alex Wright',
+		'Alice Klein',
+		'David Reid',
+		'James Smith',
+		'Jim Podmore',
+		'Jon Hogg',
+		'Jonny Lyon',
+		'Katherine Cook',
+		'Paige McCormick',
+		'Rachael Murdoch'
+	]
+	
 	function anonymizeName(name) {
 		return nameMapping[name] || name
 	}
@@ -444,18 +458,8 @@
 			}
 
 			// Build per-prompt pair scores
-		// Only include users who actually participated in the filtered data
-		const participatingUsers = new Set()
-		for(const uMap of promptUserMap.values()){
-			for(const userName of uMap.keys()){
-				if(uMap.get(userName).size > 0) participatingUsers.add(userName)
-			}
-		}
-		const activeUserList = Array.from(participatingUsers)
-		
-		if(activeUserList.length === 0) {
-			return {users:[],grid:[]}
-		}
+		// Always use all users in consistent order, even if they have no data for this filter
+		const activeUserList = allUsersOrdered
 		
 			const perPromptScores = []
 			for(const [p, uMap] of promptUserMap.entries()){
